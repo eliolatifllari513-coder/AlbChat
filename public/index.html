@@ -2,143 +2,159 @@
 <html lang="sq">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>AlbChat - Biseda Shqiptare Anonime</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .glow-red { box-shadow: 0 0 15px rgba(220, 38, 38, 0.4); }
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+  </style>
 </head>
-<body class="bg-black text-white h-screen flex flex-col font-sans overflow-hidden">
+<body class="bg-black text-zinc-100 h-screen flex flex-col font-sans overflow-hidden antialiased">
 
   <!-- Ekran Login -->
-  <div id="login-screen" class="fixed inset-0 bg-zinc-950/95 flex items-center justify-center z-50 p-4">
-    <div class="bg-zinc-900 border border-red-600/40 p-6 rounded-xl max-w-md w-full text-center space-y-4 shadow-2xl shadow-red-950/50">
-      <h1 class="text-4xl font-black text-red-600 tracking-wider">ALBCHAT</h1>
-      <p class="text-xs text-zinc-400">Përdorim 100% anonim • Pa regjistrim • Pa historik</p>
-      <input id="username-input" type="text" placeholder="Shkruaj pseudonimin tënd..." 
-        class="w-full bg-zinc-800 border border-zinc-700 p-3 text-sm rounded-lg focus:outline-none focus:border-red-600 text-white placeholder-zinc-500">
-      <button onclick="login()" class="w-full bg-red-600 hover:bg-red-700 font-bold py-3 rounded-lg transition text-white uppercase tracking-wider">
+  <div id="login-screen" class="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center z-50 p-4">
+    <div class="bg-zinc-900/90 border border-red-600/50 p-6 sm:p-8 rounded-2xl max-w-sm w-full text-center space-y-5 glow-red">
+      <div>
+        <h1 class="text-4xl font-black tracking-widest text-red-600 drop-shadow">ALBCHAT</h1>
+        <p class="text-[11px] text-zinc-400 mt-1 uppercase tracking-wider">100% Anonim • Pa Regjistrim</p>
+      </div>
+      <input id="username-input" type="text" placeholder="Pseudonimi yt..." 
+        class="w-full bg-zinc-950 border border-zinc-700 p-3.5 text-sm rounded-xl focus:outline-none focus:border-red-600 text-white placeholder-zinc-500">
+      <button onclick="login()" class="w-full bg-red-600 hover:bg-red-700 font-bold py-3.5 rounded-xl transition text-white uppercase tracking-wider text-sm shadow-lg shadow-red-900/50 active:scale-95">
         Hyr në Chat
       </button>
     </div>
   </div>
 
   <!-- Header -->
-  <header class="bg-zinc-900 border-b border-red-900/40 p-3 flex justify-between items-center px-4">
+  <header class="bg-zinc-900 border-b border-zinc-800 p-3 flex justify-between items-center px-4 shrink-0">
     <div class="flex items-center space-x-2">
-      <span class="w-3 h-3 bg-red-600 rounded-full animate-pulse"></span>
-      <h2 class="font-black text-lg tracking-wider text-red-500">ALBCHAT</h2>
+      <span class="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse"></span>
+      <h2 class="font-black text-lg tracking-wider text-red-600">ALBCHAT</h2>
     </div>
-    <div id="user-info" class="text-xs text-zinc-400 hidden">
-      Përdoruesi: <span id="my-username" class="text-red-500 font-bold"></span>
+    
+    <div class="flex items-center gap-2">
+      <!-- Butonat për Celular (Alternimi i pamjeve) -->
+      <button onclick="toggleMobileView('rooms')" class="md:hidden bg-zinc-800 text-xs px-2.5 py-1.5 rounded-lg text-zinc-300">Dhomat</button>
+      <button id="admin-tab-btn" onclick="toggleMobileView('admin')" class="hidden md:hidden bg-red-950/60 border border-red-800 text-xs px-2.5 py-1.5 rounded-lg text-red-400">Admin</button>
+      
+      <div id="user-info" class="text-xs text-zinc-400 hidden">
+        <span id="my-username" class="text-red-500 font-bold bg-zinc-800 px-2.5 py-1 rounded-md"></span>
+      </div>
     </div>
   </header>
 
   <!-- Trupi Kryesor -->
-  <div class="flex-1 flex overflow-hidden">
+  <div class="flex-1 flex overflow-hidden relative">
     
-    <!-- Lista e Dhomave (Left Sidebar) -->
-    <div class="w-1/3 sm:w-1/4 bg-zinc-900/60 border-r border-zinc-800 p-3 overflow-y-auto space-y-4">
+    <!-- Lista e Dhomave (Sidebar) -->
+    <div id="sidebar-rooms" class="absolute inset-0 z-20 bg-zinc-950 md:relative md:flex md:w-64 lg:w-72 border-r border-zinc-800/80 p-3 flex-col hidden md:flex overflow-y-auto custom-scrollbar space-y-4">
       
+      <div class="flex justify-between items-center md:hidden pb-2 border-b border-zinc-800">
+        <span class="text-xs font-bold text-zinc-400">Zgjidh Dhomën</span>
+        <button onclick="toggleMobileView('chat')" class="text-xs text-red-500 font-bold">Mbyll ✕</button>
+      </div>
+
       <!-- Global -->
       <div>
-        <h3 class="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">Kategoria Kryesore</h3>
-        <button onclick="changeRoom('Global')" class="w-full text-left p-2 rounded bg-red-950/30 border border-red-900/50 text-red-400 font-bold text-xs hover:bg-red-900/40 transition">
+        <h3 class="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1 px-1">Kryesore</h3>
+        <button onclick="changeRoom('Global')" class="w-full text-left p-2.5 rounded-xl bg-red-950/40 border border-red-900/60 text-red-400 font-bold text-xs hover:bg-red-900/40 transition">
           # Global
         </button>
       </div>
 
       <!-- Shtetet -->
       <div>
-        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Shtetet</h3>
-        <div class="space-y-1 text-xs">
-          <button onclick="changeRoom('Itali')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Itali</button>
-          <button onclick="changeRoom('Spanjë')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Spanjë</button>
-          <button onclick="changeRoom('Greqi')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Greqi</button>
-          <button onclick="changeRoom('Kosovë')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Kosovë</button>
-          <button onclick="changeRoom('Gjermani')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Gjermani</button>
-          <button onclick="changeRoom('UK')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># UK</button>
-          <button onclick="changeRoom('USA')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># USA</button>
-          <button onclick="changeRoom('Zvicër')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Zvicër</button>
-          <button onclick="changeRoom('Francë')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Francë</button>
-          <button onclick="changeRoom('Maqedonia e Veriut')" class="w-full text-left p-2 rounded hover:bg-zinc-800 text-zinc-300"># Maqedonia e Veriut</button>
+        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 px-1">Shtetet</h3>
+        <div class="grid grid-cols-2 gap-1 text-xs">
+          <button onclick="changeRoom('Itali')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># Itali</button>
+          <button onclick="changeRoom('Spanjë')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># Spanjë</button>
+          <button onclick="changeRoom('Greqi')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># Greqi</button>
+          <button onclick="changeRoom('Kosovë')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># Kosovë</button>
+          <button onclick="changeRoom('Gjermani')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># Gjermani</button>
+          <button onclick="changeRoom('UK')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># UK</button>
+          <button onclick="changeRoom('USA')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># USA</button>
+          <button onclick="changeRoom('Zvicër')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># Zvicër</button>
+          <button onclick="changeRoom('Francë')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300"># Francë</button>
+          <button onclick="changeRoom('Maqedonia e Veriut')" class="text-left p-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 truncate"># Maqedonia</button>
         </div>
       </div>
 
-      <!-- Shqipëria (20 Qytete) -->
+      <!-- Qytetet Shqipëri -->
       <div>
-        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Shqipëri (20 Qytete)</h3>
-        <div class="space-y-1 text-xs">
-          <button onclick="changeRoom('Tiranë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Tiranë</button>
-          <button onclick="changeRoom('Durrës')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Durrës</button>
-          <button onclick="changeRoom('Vlorë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Vlorë</button>
-          <button onclick="changeRoom('Shkodër')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Shkodër</button>
-          <button onclick="changeRoom('Elbasan')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Elbasan</button>
-          <button onclick="changeRoom('Fier')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Fier</button>          <button onclick="changeRoom('Korçë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Korçë</button>
-          <button onclick="changeRoom('Berat')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Berat</button>
-          <button onclick="changeRoom('Lushnjë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Lushnjë</button>
-          <button onclick="changeRoom('Kavajë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Kavajë</button>
-          <button onclick="changeRoom('Gjirokastër')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Gjirokastër</button>
-          <button onclick="changeRoom('Sarandë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Sarandë</button>
-          <button onclick="changeRoom('Laç')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Laç</button>
-          <button onclick="changeRoom('Kukës')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Kukës</button>
-          <button onclick="changeRoom('Lezhë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Lezhë</button>
-          <button onclick="changeRoom('Peshkopi')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Peshkopi</button>
-          <button onclick="changeRoom('Pogradec')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Pogradec</button>
-          <button onclick="changeRoom('Tepelenë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Tepelenë</button>
-          <button onclick="changeRoom('Tropojë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Tropojë</button>
-          <button onclick="changeRoom('Gramsh')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Gramsh</button>
+        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 px-1">Shqipëri (20)</h3>
+        <div class="grid grid-cols-2 gap-1 text-xs">
+          <button onclick="changeRoom('Tiranë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Tiranë</button>
+          <button onclick="changeRoom('Durrës')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Durrës</button>
+          <button onclick="changeRoom('Vlorë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Vlorë</button>
+          <button onclick="changeRoom('Shkodër')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Shkodër</button>
+          <button onclick="changeRoom('Elbasan')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Elbasan</button>
+          <button onclick="changeRoom('Fier')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Fier</button>
+          <button onclick="changeRoom('Korçë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Korçë</button>
+          <button onclick="changeRoom('Berat')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Berat</button>
+          <button onclick="changeRoom('Lushnjë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Lushnjë</button>
+          <button onclick="changeRoom('Kavajë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Kavajë</button>
+          <button onclick="changeRoom('Gjirokastër')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Gjirokastër</button>
+          <button onclick="changeRoom('Sarandë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Sarandë</button>
+          <button onclick="changeRoom('Laç')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Laç</button>
+          <button onclick="changeRoom('Kukës')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Kukës</button>
+          <button onclick="changeRoom('Lezhë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Lezhë</button>
+          <button onclick="changeRoom('Peshkopi')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Peshkopi</button>
+          <button onclick="changeRoom('Pogradec')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Pogradec</button>
+          <button onclick="changeRoom('Tepelenë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Tepelenë</button>
+          <button onclick="changeRoom('Tropojë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Tropojë</button>
+          <button onclick="changeRoom('Gramsh')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Gramsh</button>
         </div>
       </div>
 
-      <!-- Kosovë (7 Qytete) -->
+      <!-- Qytetet Kosovë & Maqedoni -->
       <div>
-        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Kosovë (7 Qytete)</h3>
-        <div class="space-y-1 text-xs">
-          <button onclick="changeRoom('Prishtinë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Prishtinë</button>
-          <button onclick="changeRoom('Prizren')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Prizren</button>
-          <button onclick="changeRoom('Pejë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Pejë</button>
-          <button onclick="changeRoom('Gjakovë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Gjakovë</button>
-          <button onclick="changeRoom('Ferizaj')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Ferizaj</button>
-          <button onclick="changeRoom('Gjilan')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Gjilan</button>
-          <button onclick="changeRoom('Mitrovicë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Mitrovicë</button>
-        </div>
-      </div>
-
-      <!-- Maqedoni (3 Qytete) -->
-      <div>
-        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Maqedoni (3 Qytete)</h3>
-        <div class="space-y-1 text-xs">
-          <button onclick="changeRoom('Tetovë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Tetovë</button>
-          <button onclick="changeRoom('Shkup')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Shkup</button>
-          <button onclick="changeRoom('Strugë')" class="w-full text-left p-1.5 rounded hover:bg-zinc-800 text-zinc-400"># Strugë</button>
+        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1 px-1">Kosovë & Maqedoni</h3>
+        <div class="grid grid-cols-2 gap-1 text-xs">
+          <button onclick="changeRoom('Prishtinë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Prishtinë</button>
+          <button onclick="changeRoom('Prizren')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Prizren</button>
+          <button onclick="changeRoom('Pejë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Pejë</button>
+          <button onclick="changeRoom('Gjakovë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Gjakovë</button>
+          <button onclick="changeRoom('Ferizaj')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Ferizaj</button>
+          <button onclick="changeRoom('Gjilan')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Gjilan</button>
+          <button onclick="changeRoom('Mitrovicë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Mitrovicë</button>
+          <button onclick="changeRoom('Tetovë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Tetovë</button>
+          <button onclick="changeRoom('Shkup')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Shkup</button>
+          <button onclick="changeRoom('Strugë')" class="text-left p-1.5 rounded bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400"># Strugë</button>
         </div>
       </div>
 
     </div>
 
-    <!-- Zona e Bisedës -->
-    <div class="flex-1 flex flex-col bg-zinc-950">
-      <div id="room-header" class="bg-zinc-900/40 p-2.5 text-xs font-bold text-zinc-400 border-b border-zinc-800 flex justify-between items-center">
-        <span>Dhoma Aktive: <span id="current-room-name" class="text-red-500 font-extrabold">Global</span></span>
-        <span class="text-[10px] text-zinc-500">Mesazhet fshihen pas 1 minute</span>
+    <!-- Zona e Chat-it -->
+    <div class="flex-1 flex flex-col bg-black w-full">
+      <div id="room-header" class="bg-zinc-900/60 p-3 text-xs border-b border-zinc-800 flex justify-between items-center">
+        <span>Dhoma: <span id="current-room-name" class="text-red-500 font-extrabold text-sm">Global</span></span>
+        <span class="text-[10px] bg-red-950/60 border border-red-900/50 text-red-400 px-2 py-0.5 rounded-full">Auto-delete 1m</span>
       </div>
 
-      <!-- Mesazhet -->
-      <div id="messages" class="flex-1 p-4 overflow-y-auto space-y-2"></div>
+      <!-- Lista e Mesazheve -->
+      <div id="messages" class="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar"></div>
 
-      <!-- Forma e Dërgimit -->
+      <!-- Input Form -->
       <form id="chat-form" onsubmit="sendMessage(event)" class="p-3 bg-zinc-900 border-t border-zinc-800 flex gap-2">
         <input id="message-input" type="text" placeholder="Shkruaj një mesazh..." autocomplete="off"
-          class="flex-1 bg-zinc-800 border border-zinc-700 p-2.5 text-sm rounded-lg focus:outline-none focus:border-red-600 text-white">
-        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition">
+          class="flex-1 bg-zinc-950 border border-zinc-800 p-3 text-sm rounded-xl focus:outline-none focus:border-red-600 text-white placeholder-zinc-500">
+        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xl text-sm font-bold transition shadow-lg shadow-red-950/50 active:scale-95">
           Dërgo
         </button>
       </form>
     </div>
 
-    <!-- Paneli i Adminit (E djathtë) -->
-    <div id="admin-panel" class="w-1/4 bg-zinc-900/80 border-l border-zinc-800 p-3 hidden">
-      <h3 class="text-xs font-bold text-red-500 uppercase tracking-wider mb-3">Panel Moderimi Admin</h3>
+    <!-- Paneli i Adminit -->
+    <div id="admin-panel" class="absolute inset-0 z-20 bg-zinc-950 md:relative md:w-64 border-l border-zinc-800 p-4 hidden flex-col overflow-y-auto custom-scrollbar">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-xs font-bold text-red-500 uppercase tracking-wider">Moderim Admin</h3>
+        <button onclick="toggleMobileView('chat')" class="md:hidden text-xs text-zinc-400">✕ Mbyll</button>
+      </div>
       <div id="user-list" class="space-y-2 text-xs"></div>
     </div>
 
@@ -160,9 +176,29 @@
 
       if (myUsername === 'adminelio1994') {
         document.getElementById('admin-panel').classList.remove('hidden');
+        document.getElementById('admin-panel').classList.add('md:flex');
+        document.getElementById('admin-tab-btn').classList.remove('hidden');
       }
 
       socket.emit('join', { username: myUsername, room: currentRoom });
+    }
+
+    function toggleMobileView(view) {
+      const sidebar = document.getElementById('sidebar-rooms');
+      const admin = document.getElementById('admin-panel');
+      
+      if (view === 'rooms') {
+        sidebar.classList.remove('hidden');
+        sidebar.classList.add('flex');
+        admin.classList.add('hidden');
+      } else if (view === 'admin') {
+        admin.classList.remove('hidden');
+        admin.classList.add('flex');
+        sidebar.classList.add('hidden');
+      } else {
+        sidebar.classList.add('hidden');
+        if (myUsername !== 'adminelio1994') admin.classList.add('hidden');
+      }
     }
 
     function changeRoom(newRoom) {
@@ -171,6 +207,9 @@
       document.getElementById('current-room-name').innerText = newRoom;
       document.getElementById('messages').innerHTML = '';
       socket.emit('join', { username: myUsername, room: currentRoom });
+      
+      // Mbyll sidebar në celular pas zgjedhjes
+      if (window.innerWidth < 768) toggleMobileView('chat');
     }
 
     function sendMessage(e) {
@@ -182,41 +221,35 @@
       input.value = '';
     }
 
-    // Pranimi i mesazheve dhe fshirja automatike pas 60 sekondash
     socket.on('message', (data) => {
       const msgBox = document.getElementById('messages');
       const div = document.createElement('div');
-      div.className = "text-sm bg-zinc-900/90 p-2.5 rounded-lg border-l-2 border-red-600 transition-opacity duration-500";
-      div.innerHTML = `<span class="font-bold text-red-500">${data.user}:</span> <span class="text-zinc-200">${data.text}</span>`;
+      div.className = "text-sm bg-zinc-900/80 border border-zinc-800/60 p-3 rounded-xl border-l-4 border-l-red-600 transition-all duration-300 shadow";
+      div.innerHTML = `<div class="text-[10px] text-zinc-500 font-bold mb-0.5">${data.user}</div><div class="text-zinc-200">${data.text}</div>`;
       
       msgBox.appendChild(div);
       msgBox.scrollTop = msgBox.scrollHeight;
 
-      // Fshirja pas 1 minute
       setTimeout(() => {
         div.style.opacity = '0';
-        setTimeout(() => {
-          div.remove();
-        }, 500);
+        setTimeout(() => div.remove(), 400);
       }, 60000);
     });
 
-    // Përditësimi i listës së përdoruesve për Adminin
     socket.on('updateUserList', (users) => {
       if (myUsername !== 'adminelio1994') return;
-
       const list = document.getElementById('user-list');
       list.innerHTML = '';
 
       users.forEach(u => {
         if (u.username !== 'adminelio1994') {
           const card = document.createElement('div');
-          card.className = "bg-zinc-800/80 p-2 rounded-lg flex flex-col gap-1 border border-zinc-700";
+          card.className = "bg-zinc-900 p-2.5 rounded-xl border border-zinc-800 flex justify-between items-center gap-2";
           card.innerHTML = `
-            <span class="font-bold text-zinc-200">${u.username}</span>
-            <div class="flex gap-1 mt-1">
-              <button onclick="muteUser('${u.id}')" class="bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 rounded text-[10px] flex-1">Mute 10m</button>
-              <button onclick="kickUser('${u.id}')" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[10px] flex-1">Kick</button>
+            <span class="font-bold text-zinc-300 truncate">${u.username}</span>
+            <div class="flex gap-1 shrink-0">
+              <button onclick="muteUser('${u.id}')" class="bg-yellow-600/80 hover:bg-yellow-600 text-white px-2 py-1 rounded-lg text-[10px]">Mute</button>
+              <button onclick="kickUser('${u.id}')" class="bg-red-600/80 hover:bg-red-600 text-white px-2 py-1 rounded-lg text-[10px]">Kick</button>
             </div>
           `;
           list.appendChild(card);
